@@ -115,10 +115,16 @@ def train_one_epoch(
     return total_loss / len(loader)
 
 
-def evaluate(
+def collect_predictions(
     model: nn.Module, loader: DataLoader, device: torch.device
-) -> dict[str, float]:
-    """Avalia o modelo em modo eval, retornando MSE, RMSE e MAE."""
+) -> tuple[np.ndarray, np.ndarray]:
+    """Roda o modelo em modo eval sobre o loader inteiro.
+
+    Returns:
+        Tupla ``(predictions, actuals)``, ambos com shape
+        ``(n_amostras, input_dim)``, na escala normalizada (o chamador é
+        responsável por desnormalizar via ``scaler.inverse_transform``).
+    """
     model.eval()
     predictions: list[np.ndarray] = []
     actuals: list[np.ndarray] = []
@@ -132,6 +138,14 @@ def evaluate(
 
     predictions_arr = np.array(predictions)
     actuals_arr = np.array(actuals).reshape(-1, predictions_arr.shape[-1])
+    return predictions_arr, actuals_arr
+
+
+def evaluate(
+    model: nn.Module, loader: DataLoader, device: torch.device
+) -> dict[str, float]:
+    """Avalia o modelo em modo eval, retornando MSE, RMSE e MAE."""
+    predictions_arr, actuals_arr = collect_predictions(model, loader, device)
 
     mse = mean_squared_error(actuals_arr, predictions_arr)
     mae = mean_absolute_error(actuals_arr, predictions_arr)

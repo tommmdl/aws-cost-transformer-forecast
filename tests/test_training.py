@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from aws_cost_forecast.model.transformer import TimeSeriesTransformer
 from aws_cost_forecast.training.train import (
     build_dataloaders,
+    collect_predictions,
     create_sequences,
     evaluate,
     load_checkpoint,
@@ -75,6 +76,17 @@ def test_train_one_epoch_reduces_loss_over_multiple_epochs():
         last_epoch_loss = train_one_epoch(model, loader, criterion, optimizer, device)
 
     assert last_epoch_loss < first_epoch_loss
+
+
+def test_collect_predictions_returns_matching_shapes():
+    torch.manual_seed(0)
+    X, y = torch.randn(8, 5, 1), torch.randn(8, 1, 1)
+    loader = DataLoader(TensorDataset(X, y), batch_size=4, shuffle=False)
+    model = TimeSeriesTransformer(input_dim=1, d_model=8, nhead=2, num_layers=1, dropout=0.0)
+
+    predictions, actuals = collect_predictions(model, loader, torch.device("cpu"))
+
+    assert predictions.shape == actuals.shape == (8, 1)
 
 
 def test_evaluate_returns_nonnegative_metrics():
