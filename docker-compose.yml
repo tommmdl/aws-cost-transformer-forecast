@@ -1,0 +1,20 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./checkpoints:/app/checkpoints:ro
+    environment:
+      - CHECKPOINT_PATH=/app/checkpoints/model.pt
+
+  # Gera/atualiza o checkpoint dentro do mesmo ambiente da imagem, sem
+  # precisar de uv instalado no host. Não sobe com `docker compose up`
+  # (fica atrás do profile "train"); rode com:
+  #   docker compose run --rm train
+  train:
+    build: .
+    profiles: ["train"]
+    volumes:
+      - ./checkpoints:/app/checkpoints
+    entrypoint: ["python", "-m", "aws_cost_forecast.training.train"]
