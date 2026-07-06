@@ -18,9 +18,10 @@ checkpoints/
 *.pt
 *.pth
 
-# Source material (postgraduate coursework) and brief — not part of the deliverable repo
+# Source material (postgraduate coursework), brief, and personal study notes — not part of the deliverable repo
 Projetos/
 brief-aws-cost-transformer-forecast.md
+STUDY_NOTES.md
 
 # Local Claude Code configuration
 .claude/
