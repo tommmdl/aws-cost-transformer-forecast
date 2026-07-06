@@ -1,22 +1,23 @@
-"""Codificação posicional sinusoidal para embeddings de um Transformer.
+"""Sinusoidal positional encoding for Transformer embeddings.
 
-Portado de `Projetos/Projeto4.ipynb` (pós-graduação DSA), mantendo a lógica
-matemática original intacta — só adiciona tipagem e docstrings.
+Ported from `Projetos/Projeto4.ipynb` (DSA postgraduate coursework),
+keeping the original math intact — only adds typing and docstrings.
 
-Self-attention é permutation-equivariant: o mecanismo calcula uma soma
-ponderada por similaridade entre posições, sem nenhuma noção implícita de
-ordem. Sem codificação posicional, embaralhar a sequência de entrada não
-mudaria a saída do bloco de atenção. A codificação abaixo injeta a posição
-somando, a cada dimensão do embedding, uma onda senoidal com frequência
-diferente — uma base tipo Fourier para posição.
+Self-attention is permutation-equivariant: the mechanism computes a
+weighted sum based on similarity between positions, with no implicit
+notion of order. Without positional encoding, shuffling the input
+sequence would not change the attention block's output. The encoding
+below injects position by adding, to each embedding dimension, a
+sinusoidal wave with a different frequency — a Fourier-like basis for
+position.
 
-Por que seno/cosseno (e não o índice de posição puro): os valores ficam
-limitados a [-1, 1] independente do tamanho da sequência, e a identidade de
-soma de ângulos (`sin(a+b) = sin(a)cos(b) + cos(a)sin(b)`) garante que
-`PE(pos + k)` é uma transformação linear fixa de `PE(pos)` — deslocar a
-posição em `k` passos equivale a aplicar uma matriz de rotação sobre o vetor
-de codificação, análogo à mudança de base via matriz de autovetores em PCA,
-só que aqui a base é fixa (não aprendida).
+Why sine/cosine (and not the raw position index): the values stay bounded
+to [-1, 1] regardless of sequence length, and the angle-sum identity
+(`sin(a+b) = sin(a)cos(b) + cos(a)sin(b)`) guarantees that `PE(pos + k)`
+is a fixed linear transformation of `PE(pos)` — shifting the position by
+`k` steps is equivalent to applying a rotation matrix to the encoding
+vector, analogous to the change of basis via the eigenvector matrix in
+PCA, except here the basis is fixed (not learned).
 """
 
 from __future__ import annotations
@@ -28,46 +29,46 @@ from torch import nn
 
 
 class PositionalEncoding(nn.Module):
-    """Soma uma codificação posicional sinusoidal fixa ao embedding de entrada."""
+    """Adds a fixed sinusoidal positional encoding to the input embedding."""
 
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000) -> None:
         super().__init__()
 
         self.dropout = nn.Dropout(p=dropout)
 
-        # Matriz de codificação posicional: uma linha por posição, uma coluna
-        # por dimensão do embedding.
+        # Positional encoding matrix: one row per position, one column
+        # per embedding dimension.
         pe = torch.zeros(max_len, d_model)
 
-        # Vetor de posições 0..max_len-1.
+        # Position vector 0..max_len-1.
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
 
-        # Termo divisor: controla a frequência de oscilação de cada dimensão.
-        # Calculado via exp(log(...)) por estabilidade numérica, evitando
-        # calcular 10000**(2i/d_model) diretamente.
+        # Divisor term: controls the oscillation frequency of each
+        # dimension. Computed via exp(log(...)) for numerical stability,
+        # avoiding computing 10000**(2i/d_model) directly.
         div_term = torch.exp(
             torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)
         )
 
-        # Seno nas dimensões pares, cosseno nas ímpares.
+        # Sine on even dimensions, cosine on odd ones.
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
 
-        # Dimensão extra no início para broadcast sobre o batch.
+        # Extra leading dimension for broadcasting over the batch.
         pe = pe.unsqueeze(0)
 
-        # Buffer, não parâmetro: não é aprendido via gradiente, mas viaja
-        # com o modelo (device, state_dict).
+        # Buffer, not a parameter: not learned via gradient, but travels
+        # with the model (device, state_dict).
         self.register_buffer("pe", pe)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Soma a codificação posicional ao embedding e aplica dropout.
+        """Adds the positional encoding to the embedding and applies dropout.
 
         Args:
-            x: tensor de shape ``(batch, seq_len, d_model)``.
+            x: tensor of shape ``(batch, seq_len, d_model)``.
 
         Returns:
-            Tensor de mesma shape que ``x``.
+            Tensor of the same shape as ``x``.
         """
         x = x + self.pe[:, : x.size(1), :]
         return self.dropout(x)

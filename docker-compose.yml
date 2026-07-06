@@ -8,9 +8,9 @@ services:
     environment:
       - CHECKPOINT_PATH=/app/checkpoints/model.pt
 
-  # Gera/atualiza o checkpoint dentro do mesmo ambiente da imagem, sem
-  # precisar de uv instalado no host. Não sobe com `docker compose up`
-  # (fica atrás do profile "train"); rode com:
+  # Generates/updates the checkpoint inside the same environment as the
+  # image, without needing uv installed on the host. Does not start with
+  # `docker compose up` (gated behind the "train" profile); run with:
   #   docker compose run --rm train
   train:
     build: .

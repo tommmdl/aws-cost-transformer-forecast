@@ -18,9 +18,9 @@ checkpoints/
 *.pt
 *.pth
 
-# Material de origem (pós-graduação) e brief — não fazem parte do repo entregável
+# Source material (postgraduate coursework) and brief — not part of the deliverable repo
 Projetos/
 brief-aws-cost-transformer-forecast.md
 
-# Configuração local do Claude Code
+# Local Claude Code configuration
 .claude/

@@ -1,11 +1,11 @@
-"""Lógica de inferência: carregar checkpoint e prever custo futuro.
+"""Inference logic: load a checkpoint and forecast future cost.
 
-Separado de `main.py` para manter as funções puras (sem FastAPI) e
-testáveis isoladamente. O forecast multi-passo é autorregressivo, portado
-de `dsa_previsao_futuro` no notebook original: a cada passo o modelo prevê
-o próximo valor, ele é anexado ao final da janela e o valor mais antigo é
-descartado, então a mesma janela (tamanho fixo) sempre alimenta o próximo
-passo.
+Kept separate from `main.py` to keep the functions pure (no FastAPI) and
+independently testable. The multi-step forecast is autoregressive, ported
+from `dsa_previsao_futuro` in the original notebook: at each step the model
+predicts the next value, it gets appended to the end of the window, and the
+oldest value is dropped, so the same fixed-size window always feeds the
+next step.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from aws_cost_forecast.training.train import load_checkpoint, select_device
 
 @dataclass
 class ModelBundle:
-    """Modelo treinado, scaler e metadados necessários para servir previsões."""
+    """Trained model, scaler and metadata needed to serve forecasts."""
 
     model: nn.Module
     scaler: MinMaxScaler
@@ -35,11 +35,12 @@ class ModelBundle:
 def load_model_bundle(
     checkpoint_path: str | Path, device: torch.device | None = None
 ) -> ModelBundle | None:
-    """Carrega um checkpoint salvo por `training.train.save_checkpoint`.
+    """Loads a checkpoint saved by `training.train.save_checkpoint`.
 
     Returns:
-        ``None`` se o arquivo de checkpoint não existir (ex.: antes do
-        primeiro treino), para que a API suba mesmo sem modelo treinado.
+        ``None`` if the checkpoint file doesn't exist (e.g. before the
+        first training run), so the API can still start without a
+        trained model.
     """
     checkpoint_path = Path(checkpoint_path)
     if not checkpoint_path.exists():
@@ -63,15 +64,15 @@ def load_model_bundle(
 def forecast_future(
     model: nn.Module, start_sequence: torch.Tensor, steps: int, device: torch.device
 ) -> np.ndarray:
-    """Prevê `steps` passos à frente, de forma autorregressiva.
+    """Forecasts `steps` steps ahead, autoregressively.
 
     Args:
-        start_sequence: janela normalizada, shape ``(input_window, 1)``.
-        steps: quantidade de passos futuros a prever.
+        start_sequence: normalized window, shape ``(input_window, 1)``.
+        steps: number of future steps to forecast.
 
     Returns:
-        Array de shape ``(steps,)`` com as previsões, ainda na escala
-        normalizada.
+        Array of shape ``(steps,)`` with the forecasts, still on the
+        normalized scale.
     """
     model.eval()
     future_predictions: list[float] = []
@@ -95,7 +96,7 @@ def forecast_from_history(
     steps: int,
     device: torch.device,
 ) -> list[float]:
-    """Normaliza o histórico, prevê o futuro e desnormaliza o resultado."""
+    """Normalizes the history, forecasts the future and denormalizes the result."""
     history = np.array(historical_costs, dtype=np.float32).reshape(-1, 1)
     history_scaled = scaler.transform(history).astype(np.float32)
     start_sequence = torch.tensor(history_scaled, dtype=torch.float32)

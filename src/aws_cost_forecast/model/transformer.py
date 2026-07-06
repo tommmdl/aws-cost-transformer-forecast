@@ -1,14 +1,14 @@
-"""Transformer para previsão de séries temporais.
+"""Transformer for time series forecasting.
 
-Portado de `Projetos/Projeto4.ipynb` (pós-graduação DSA), mantendo a lógica
-matemática original intacta — só adiciona tipagem e docstrings.
+Ported from `Projetos/Projeto4.ipynb` (DSA postgraduate coursework),
+keeping the original math intact — only adds typing and docstrings.
 
-Arquitetura: uma projeção linear leva o valor de entrada (custo do dia) para
-um espaço de dimensão `d_model` (matriz de pesos, igual às matrizes do
-Projeto 2), soma-se a codificação posicional, passa por camadas de
-self-attention (`nn.TransformerEncoder`) e o resultado é agregado por média
-ao longo do tempo antes de uma projeção linear final de volta à dimensão de
-entrada.
+Architecture: a linear projection takes the input value (the day's cost)
+into a `d_model`-dimensional space (a weight matrix, same idea as the
+matrices from Projeto 2), positional encoding is added, it goes through
+self-attention layers (`nn.TransformerEncoder`), and the result is
+aggregated by averaging over time before a final linear projection back
+to the input dimension.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from aws_cost_forecast.model.positional_encoding import PositionalEncoding
 
 
 class TimeSeriesTransformer(nn.Module):
-    """Transformer encoder-only para regressão de séries temporais."""
+    """Encoder-only Transformer for time series regression."""
 
     def __init__(
         self,
@@ -37,8 +37,8 @@ class TimeSeriesTransformer(nn.Module):
         self.model_type = "Transformer"
         self.d_model = d_model
 
-        # Projeta a entrada escalar (ou multivariada) para o espaço de
-        # embedding do Transformer.
+        # Projects the scalar (or multivariate) input into the
+        # Transformer's embedding space.
         self.encoder = nn.Linear(input_dim, d_model)
 
         self.pos_encoder = PositionalEncoding(d_model, dropout)
@@ -53,30 +53,31 @@ class TimeSeriesTransformer(nn.Module):
             encoder_layers, num_layers=num_layers
         )
 
-        # Projeta de volta à dimensão original da entrada (a previsão).
+        # Projects back to the original input dimension (the forecast).
         self.decoder = nn.Linear(d_model, input_dim)
 
     def forward(self, src: torch.Tensor) -> torch.Tensor:
-        """Executa o forward pass do modelo.
+        """Runs the model's forward pass.
 
         Args:
-            src: tensor de shape ``(batch, seq_len, input_dim)``.
+            src: tensor of shape ``(batch, seq_len, input_dim)``.
 
         Returns:
-            Tensor de shape ``(batch, input_dim)`` com a previsão do
-            próximo valor da série.
+            Tensor of shape ``(batch, input_dim)`` with the forecast for
+            the series' next value.
         """
-        # Escala pela raiz de d_model (convenção de "Attention Is All You
-        # Need"): sem isso, o embedding aprendido ficaria pequeno demais
-        # frente à codificação posicional, que já é O(1).
+        # Scales by the square root of d_model (convention from
+        # "Attention Is All You Need"): without it, the learned embedding
+        # would be too small compared to the positional encoding, which
+        # is already O(1).
         src = self.encoder(src) * math.sqrt(self.d_model)
 
         src = self.pos_encoder(src)
 
         output = self.transformer_encoder(src)
 
-        # Média ao longo do tempo é mais estável que usar só o último
-        # passo da sequência (reduz variância, como uma média amostral).
+        # Averaging over time is more stable than using only the
+        # sequence's last step (reduces variance, like a sample mean).
         output = output.mean(dim=1)
 
         output = self.decoder(output)

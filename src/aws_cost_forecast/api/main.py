@@ -1,9 +1,9 @@
-"""API FastAPI de inferência: serve o TimeSeriesTransformer treinado.
+"""FastAPI inference API: serves the trained TimeSeriesTransformer.
 
-O checkpoint é carregado uma vez, na subida da aplicação (`lifespan`), e
-injetado nos endpoints via `Depends` — isso permite testar os endpoints
-substituindo o modelo por um dublê nos testes, sem precisar de um
-checkpoint real treinado em disco.
+The checkpoint is loaded once, at application startup (`lifespan`), and
+injected into the endpoints via `Depends` — this allows testing the
+endpoints by swapping the model for a test double, without needing a
+real trained checkpoint on disk.
 """
 
 from __future__ import annotations
@@ -41,12 +41,12 @@ class ForecastRequest(BaseModel):
     historical_costs: list[float] = Field(
         ...,
         description=(
-            "Janela de custos diários históricos, em ordem cronológica. "
-            "Deve ter o mesmo tamanho da janela usada no treino do modelo."
+            "Window of historical daily costs, in chronological order. "
+            "Must have the same size as the window used to train the model."
         ),
     )
     steps: int = Field(
-        default=7, ge=1, le=90, description="Quantidade de dias à frente para prever."
+        default=7, ge=1, le=90, description="Number of days ahead to forecast."
     )
 
 
@@ -72,15 +72,15 @@ def forecast(
     if bundle is None:
         raise HTTPException(
             status_code=503,
-            detail="Modelo ainda não carregado. Treine e gere um checkpoint primeiro.",
+            detail="Model not loaded yet. Train the model and generate a checkpoint first.",
         )
 
     if len(request.historical_costs) != bundle.input_window:
         raise HTTPException(
             status_code=422,
             detail=(
-                f"historical_costs deve conter exatamente {bundle.input_window} "
-                "valores (tamanho da janela do modelo)."
+                f"historical_costs must contain exactly {bundle.input_window} "
+                "values (the model's window size)."
             ),
         )
 

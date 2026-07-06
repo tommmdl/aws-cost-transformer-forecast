@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# Estágio de build: instala dependências via uv (usando o lockfile, sem
-# grupo dev) e monta o virtualenv com o pacote instalado.
+# Build stage: installs dependencies via uv (using the lockfile, without
+# the dev group) and assembles the virtualenv with the package installed.
 FROM python:3.12-slim AS builder
 
 RUN pip install --no-cache-dir uv
@@ -13,8 +13,8 @@ COPY src ./src
 
 RUN uv sync --frozen --no-dev
 
-# Estágio final: só o virtualenv pronto + código-fonte, sem toolchain de
-# build, imagem menor.
+# Final stage: only the ready virtualenv + source code, no build
+# toolchain, smaller image.
 FROM python:3.12-slim AS runtime
 
 WORKDIR /app

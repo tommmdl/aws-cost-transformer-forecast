@@ -1,17 +1,18 @@
-"""Script de treino do TimeSeriesTransformer sobre custo AWS sintético.
+"""Training script for the TimeSeriesTransformer on synthetic AWS cost data.
 
-Pipeline portado de `Projetos/Projeto4.ipynb`: gera a série sintética,
-normaliza com `MinMaxScaler` (ajustado **somente** nos dados de treino, para
-não vazar a distribuição do período de teste para dentro do treino), cria
-sequências por janela deslizante, treina com `nn.MSELoss` + `torch.optim.Adam`
-e salva um checkpoint com os pesos do modelo, o scaler e a configuração
-necessária para reconstruir o modelo depois (usado pela API de inferência).
+Pipeline ported from `Projetos/Projeto4.ipynb`: generates the synthetic
+series, normalizes with `MinMaxScaler` (fitted **only** on the training
+data, so as not to leak the test period's distribution into training),
+creates sliding-window sequences, trains with `nn.MSELoss` +
+`torch.optim.Adam`, and saves a checkpoint with the model weights, the
+scaler, and the configuration needed to reconstruct the model later (used
+by the inference API).
 
-MSE penaliza quadraticamente os erros, forçando o modelo a evitar grandes
-desvios de custo. Adam combina momentum (média móvel do gradiente) com
-RMSProp (taxa de aprendizado adaptada por parâmetro, dividida pela raiz da
-média móvel do quadrado do gradiente) — uma forma adaptativa da regra da
-cadeia usada em gradiente descendente.
+MSE penalizes errors quadratically, pushing the model to avoid large cost
+deviations. Adam combines momentum (a moving average of the gradient) with
+RMSProp (a per-parameter learning rate divided by the root of the moving
+average of the squared gradient) — an adaptive form of the chain rule used
+in gradient descent.
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ DEFAULT_CHECKPOINT_PATH = Path("checkpoints/model.pt")
 
 
 def select_device() -> torch.device:
-    """Seleciona GPU (CUDA ou Apple MPS) se disponível, senão CPU."""
+    """Selects GPU (CUDA or Apple MPS) if available, otherwise CPU."""
     if torch.cuda.is_available():
         return torch.device("cuda")
     if torch.backends.mps.is_available():
@@ -45,15 +46,15 @@ def select_device() -> torch.device:
 def create_sequences(
     data: np.ndarray, input_window: int
 ) -> list[tuple[np.ndarray, np.ndarray]]:
-    """Cria janelas deslizantes (sequência de entrada, rótulo seguinte).
+    """Creates sliding windows (input sequence, next label).
 
     Args:
-        data: série normalizada, shape ``(n_pontos, n_features)``.
-        input_window: tamanho da janela de entrada.
+        data: normalized series, shape ``(n_points, n_features)``.
+        input_window: size of the input window.
 
     Returns:
-        Lista de tuplas ``(seq, label)``, ``seq`` com shape
-        ``(input_window, n_features)`` e ``label`` com shape
+        List of ``(seq, label)`` tuples, ``seq`` with shape
+        ``(input_window, n_features)`` and ``label`` with shape
         ``(1, n_features)``.
     """
     sequences = []
@@ -68,7 +69,7 @@ def create_sequences(
 def sequences_to_tensors(
     sequences: list[tuple[np.ndarray, np.ndarray]],
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Converte a lista de sequências em tensores ``(X, y)``."""
+    """Converts the list of sequences into ``(X, y)`` tensors."""
     X = torch.tensor(np.array([item[0] for item in sequences]), dtype=torch.float32)
     y = torch.tensor(np.array([item[1] for item in sequences]), dtype=torch.float32)
     return X, y
@@ -81,7 +82,7 @@ def build_dataloaders(
     y_test: torch.Tensor,
     batch_size: int,
 ) -> tuple[DataLoader, DataLoader]:
-    """Constrói os DataLoaders de treino (embaralhado) e teste (em ordem)."""
+    """Builds the training (shuffled) and test (in order) DataLoaders."""
     train_loader = DataLoader(
         TensorDataset(X_train, y_train), batch_size=batch_size, shuffle=True
     )
@@ -98,7 +99,7 @@ def train_one_epoch(
     optimizer: torch.optim.Optimizer,
     device: torch.device,
 ) -> float:
-    """Executa uma época de treino e retorna a perda média."""
+    """Runs one training epoch and returns the average loss."""
     model.train()
     total_loss = 0.0
     for seq, label in loader:
@@ -118,12 +119,13 @@ def train_one_epoch(
 def collect_predictions(
     model: nn.Module, loader: DataLoader, device: torch.device
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Roda o modelo em modo eval sobre o loader inteiro.
+    """Runs the model in eval mode over the entire loader.
 
     Returns:
-        Tupla ``(predictions, actuals)``, ambos com shape
-        ``(n_amostras, input_dim)``, na escala normalizada (o chamador é
-        responsável por desnormalizar via ``scaler.inverse_transform``).
+        Tuple ``(predictions, actuals)``, both with shape
+        ``(n_samples, input_dim)``, on the normalized scale (the caller
+        is responsible for denormalizing via
+        ``scaler.inverse_transform``).
     """
     model.eval()
     predictions: list[np.ndarray] = []
@@ -144,7 +146,7 @@ def collect_predictions(
 def evaluate(
     model: nn.Module, loader: DataLoader, device: torch.device
 ) -> dict[str, float]:
-    """Avalia o modelo em modo eval, retornando MSE, RMSE e MAE."""
+    """Evaluates the model in eval mode, returning MSE, RMSE and MAE."""
     predictions_arr, actuals_arr = collect_predictions(model, loader, device)
 
     mse = mean_squared_error(actuals_arr, predictions_arr)
@@ -159,7 +161,7 @@ def save_checkpoint(
     model_config: dict[str, Any],
     input_window: int,
 ) -> None:
-    """Salva pesos do modelo, scaler e configuração para reconstrução futura."""
+    """Saves model weights, scaler and configuration for future reconstruction."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
@@ -174,13 +176,13 @@ def save_checkpoint(
 
 
 def load_checkpoint(path: str | Path) -> dict[str, Any]:
-    """Carrega um checkpoint salvo por :func:`save_checkpoint`."""
+    """Loads a checkpoint saved by :func:`save_checkpoint`."""
     return torch.load(path, weights_only=False)
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Treina o TimeSeriesTransformer sobre custo AWS sintético."
+        description="Trains the TimeSeriesTransformer on synthetic AWS cost data."
     )
     parser.add_argument("--n-days", type=int, default=730)
     parser.add_argument("--seed", type=int, default=42)
@@ -209,8 +211,8 @@ def main(argv: list[str] | None = None) -> dict[str, float]:
     cutoff = int(len(series) * args.train_split)
     series_train, series_test = series[:cutoff], series[cutoff:]
 
-    # Ajusta o scaler SOMENTE no treino: usar min/max da série completa
-    # vazaria a distribuição do período de teste para dentro do treino.
+    # Fits the scaler on training data ONLY: using min/max from the full
+    # series would leak the test period's distribution into training.
     scaler = MinMaxScaler(feature_range=(-1, 1))
     scaler.fit(series_train)
     series_train_scaled = scaler.transform(series_train).astype(np.float32)
@@ -239,7 +241,7 @@ def main(argv: list[str] | None = None) -> dict[str, float]:
 
     for epoch in range(args.epochs):
         avg_loss = train_one_epoch(model, train_loader, criterion, optimizer, device)
-        print(f"Epoch {epoch + 1}/{args.epochs} - loss média: {avg_loss:.6f}")
+        print(f"Epoch {epoch + 1}/{args.epochs} - avg loss: {avg_loss:.6f}")
 
     metrics = evaluate(model, test_loader, device)
     print(
@@ -248,7 +250,7 @@ def main(argv: list[str] | None = None) -> dict[str, float]:
     )
 
     save_checkpoint(args.checkpoint_path, model, scaler, model_config, args.input_window)
-    print(f"Checkpoint salvo em: {args.checkpoint_path}")
+    print(f"Checkpoint saved to: {args.checkpoint_path}")
 
     return metrics
 

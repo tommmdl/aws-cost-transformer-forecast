@@ -1,18 +1,18 @@
-"""Gerador de série sintética de custo AWS.
+"""Synthetic AWS cost time series generator.
 
-Não usa nenhum dado real de cliente ou de empresa. O objetivo é produzir uma
-série diária que se pareça, em forma, com billing real de uma organização
-enterprise multi-conta, combinando os padrões que aparecem na prática de
-FinOps:
+Uses no real customer or company data. The goal is to produce a daily
+series that resembles, in shape, real billing from a multi-account
+enterprise organization, combining the patterns that show up in FinOps
+practice:
 
-- tendência de crescimento (onboarding de novos serviços/contas);
-- sazonalidade semanal (cargas batch/dev desligadas nos fins de semana);
-- sazonalidade mensal (picos no fechamento de mês);
-- efeito de Savings Plans / RI (degraus de redução após pontos de compra);
-- anomalias pontuais (spikes, ex.: instância grande esquecida ligada);
-- ruído com caudas mais pesadas que o gaussiano (distribuição t de Student),
-  já que custo de nuvem real tem mais eventos extremos do que um ruído
-  gaussiano puro sugeriria.
+- growth trend (onboarding of new services/accounts);
+- weekly seasonality (batch/dev workloads turned off on weekends);
+- monthly seasonality (spikes at month-end closing);
+- Savings Plans / RI effect (step reductions after purchase points);
+- point anomalies (spikes, e.g. a large instance left running by mistake);
+- noise with heavier tails than Gaussian (Student's t distribution), since
+  real cloud cost has more extreme events than pure Gaussian noise would
+  suggest.
 """
 
 from __future__ import annotations
@@ -39,17 +39,17 @@ def generate_synthetic_aws_cost(
     base_daily_cost: float = 5000.0,
     seed: int | None = None,
 ) -> pd.DataFrame:
-    """Gera uma série diária sintética de custo AWS.
+    """Generates a synthetic daily AWS cost series.
 
     Args:
-        n_days: quantidade de dias a gerar.
-        start_date: data inicial da série (formato ISO ``YYYY-MM-DD``).
-        base_daily_cost: custo diário de referência no início da série.
-        seed: semente do gerador aleatório, para reprodutibilidade.
+        n_days: number of days to generate.
+        start_date: series start date (ISO format ``YYYY-MM-DD``).
+        base_daily_cost: reference daily cost at the start of the series.
+        seed: random generator seed, for reproducibility.
 
     Returns:
-        DataFrame com colunas ``date`` (Timestamp), ``cost`` (float32) e
-        ``is_anomaly`` (bool, marca os dias com spike injetado).
+        DataFrame with columns ``date`` (Timestamp), ``cost`` (float32) and
+        ``is_anomaly`` (bool, flags days with an injected spike).
     """
     rng = np.random.default_rng(seed)
     dates = pd.date_range(start_date, periods=n_days, freq="D")
