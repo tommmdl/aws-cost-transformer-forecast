@@ -5,12 +5,14 @@
 ## Pitch
 
 As a Senior Cloud Operations Analyst focused on FinOps, I deal daily with
-forecasting and optimizing AWS cost across 13+ enterprise accounts. This
+forecasting and optimizing AWS cost across ~20 client AWS accounts. This
 project applies a Transformer architecture — implemented from scratch
 (Positional Encoding, attention, training) during my postgraduate studies in
 Mathematics and Applied Statistics for Data Science, ML and AI — to forecast
 cloud cost time series, bringing together two worlds: FinOps domain
-expertise and applied Deep Learning.
+expertise and applied Deep Learning. I'm now continuing with a postgraduate
+program in Machine Learning and MLOps at Data Science Academy (finishing
+December 2026).
 
 ## Status
 
@@ -120,3 +122,7 @@ controls how many days ahead to forecast (1–90).
 - [x] Notebook runs start to finish with no errors and generates the forecast plots
 - [x] README explains the pitch, the architecture, and includes images/plots
 - [x] No real customer or company data anywhere in the repo
+
+## License
+
+MIT. See [LICENSE](LICENSE).
